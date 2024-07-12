@@ -14,26 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM debian:buster
+FROM debian:bookworm-20240701-slim
 
-LABEL maintainer="urpylka@gmail.com"
+LABEL maintainer="coralhl@gmail.com"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Update APT repository & install packages (except aptly)
 RUN apt-get -q update \
   && apt-get -y install \
+    apt-utils \
+    bash-completion \
     bzip2 \
+    curl \
+    gettext-base \
     gnupg2 \
     gpgv \
     graphviz \
-    supervisor \
     nginx \
-    curl \
-    xz-utils \
-    apt-utils \
-    gettext-base \
-    bash-completion
+    supervisor \
+    xz-utils
 
 RUN curl -sL https://www.aptly.info/pubkey.txt | gpg --dearmor | tee /etc/apt/trusted.gpg.d/aptly.gpg >/dev/null \
   && echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list
