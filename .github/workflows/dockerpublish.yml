@@ -8,7 +8,6 @@ on:
     # Publish `master` as Docker `latest` image.
     branches:
       - master
-      - dev
 
     # Publish `v1.2.3` tags as releases.
     tags:
@@ -27,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Run tests
         run: |
@@ -48,17 +47,17 @@ jobs:
     if: github.event_name == 'push'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Build image
         run: docker build . --file Dockerfile --tag image
 
       - name: Log into registry
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_LOGIN }} --password-stdin
+        run: echo "${{ secrets.DH_TOKEN }}" | docker login -u ${{ secrets.DH_USERNAME }} --password-stdin
 
       - name: Push image
         run: |
-          IMAGE_ID=${{ secrets.DOCKERHUB_LOGIN }}/$IMAGE_NAME
+          IMAGE_ID=${{ secrets.DH_USERNAME }}/$IMAGE_NAME
 
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
