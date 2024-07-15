@@ -1,10 +1,8 @@
 #! /usr/bin/env bash
 
 # Automate the initial creation and update of a mirror in aptly.
-# Uncomment a prepared section or use your own.
 
-# For any section you select, you need to install repo signing public
-# key, if you wanna take it from your system you can look for in:
+# You need to install repo signing public key, if you wanna take it from your system you can look for in:
 # /usr/share/keyrings/ (like /usr/share/keyrings/ubuntu-archive-keyring.gpg) or you can take it from apt-key (apt-key help / list / export).
 # Export the key to the pubring in GPG utility (usually ${GNUPGHOME}/pubring.gpg). You can use prepared script /opt/keys_imp.sh for it.
 # You can then specify its value in the docker environment variable.
