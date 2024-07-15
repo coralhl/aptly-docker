@@ -35,7 +35,7 @@ RUN apt-get -q update \
     supervisor \
     xz-utils
 
-RUN curl -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.25.2/yq_linux_amd64 \
+RUN curl -L -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64 \
   && chmod +x /usr/local/bin/yq
 
 RUN curl -sL https://www.aptly.info/pubkey.txt | gpg --dearmor | tee /etc/apt/trusted.gpg.d/aptly.gpg >/dev/null \
