@@ -6,7 +6,7 @@ services:
     container_name: aptly-mirror
     restart: always
     # environment:
-    #   - GPG_PASSPHRASE="super-secret-passphrase" 
+    #   - GPG_PASSPHRASE=super-secret-passphrase
     networks:
       - proxy_default
     ports:
