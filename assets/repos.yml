@@ -1,0 +1,11 @@
+repositories:
+  - name: php
+    url: https://packages.sury.org/php/
+    dist:
+      - bookworm
+      - bullseye
+    components:
+      - main
+    architectures:
+      - amd64
+      - arm64

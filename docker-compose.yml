@@ -1,24 +1,15 @@
 version: '3'
-services:
-  aptly:
-    container_name: aptly
-    build:
-      context: ./
-      dockerfile: Dockerfile
-    restart: always
 
+services:
+  aptly-mirror:
+    image: coralhl/aptly
+    container_name: aptly-mirror
+    restart: always
+    # environment:
+    #   - GPG_PASSPHRASE="super-secret-passphrase" 
+    networks:
+      - proxy_default
     ports:
       - 80:80
-
-    # Create aptly-data volume,
-    # otherwise use directory, fe:
-    # - ./aptly-data:/opt/aptly
     volumes:
-      - aptly-data:/opt/aptly
-
-    # If want to use additional environments,
-    # you can set them in .env file
-
-volumes:
-  aptly-data:
-    external: true
+      - /opt/docker/aptly:/opt/aptly

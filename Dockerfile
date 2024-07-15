@@ -35,6 +35,9 @@ RUN apt-get -q update \
     supervisor \
     xz-utils
 
+RUN wget https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64 -O /usr/local/bin/yq \
+  && chmod +x /usr/local/bin/yq
+
 RUN curl -sL https://www.aptly.info/pubkey.txt | gpg --dearmor | tee /etc/apt/trusted.gpg.d/aptly.gpg >/dev/null \
   && echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list
 

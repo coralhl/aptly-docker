@@ -8,143 +8,89 @@ set -e
 # key, if you wanna take it from your system you can look for in:
 # /usr/share/keyrings/ (like /usr/share/keyrings/ubuntu-archive-keyring.gpg) or you can take it from apt-key (apt-key help / list / export).
 # Export the key to the pubring in GPG utility (usually ${GNUPGHOME}/pubring.gpg). You can use prepared script /opt/keys_imp.sh for it.
+# You can then specify its value in the docker environment variable.
+# GPG_PASSPHRASE="super-secret-passphrase"
 
-# The variables (as set below) will create a mirror of the Ubuntu Trusty repo
-# with the main & universe components, you can add other components like restricted
-# multiverse etc by adding to the array (separated by spaces).
+# Path to YAML file with repos settings
+YAML_FILE="/opt/aptly/conf/repos.yml"
 
-# For more detail about each of the variables below refer to:
-# https://help.ubuntu.com/community/Repositories/CommandLine
-
-# UPSTREAM_URL="http://archive.ubuntu.com/ubuntu/"
-# REPO=ubuntu
-# OS_RELEASE=bionic
-# DISTS=( ${OS_RELEASE} ${OS_RELEASE}-updates ${OS_RELEASE}-security )
-# COMPONENTS=( main universe )
-# ARCH=amd64
-
-# The variables (as set below) will create a mirror of the Debian Buster repo
-# with the main and update components. If you do mirror these, you'll want to
-# include "deb http://security.debian.org buster/updates main" in your sources.list
-# file or mirror it similarly as done below to keep up with security updates.
-
-# UPSTREAM_URL="http://deb.debian.org/debian/"
-# REPO=debian
-# OS_RELEASE=buster
-# DISTS=( ${OS_RELEASE} ${OS_RELEASE}-updates )
-# COMPONENTS=( main )
-# ARCH=amd64
-
-# The variables (as set below) will create a mirror of the default Raspbian Buster
-# repo (that is used in Raspbian images).
-
-UPSTREAM_URL="http://raspbian.raspberrypi.org/raspbian/"
-REPO=raspbian
-DISTS=( buster )
-COMPONENTS=( main contrib non-free rpi )
-ARCH=armhf
-
-# Override repository related variables by options
-
-usage()
-{
-  echo "usage: update-mirror.sh -u ${UPSTREAM_URL} -r ${REPO} -d ${DISTS} -c ${COMPONENTS} -a ${ARCH}"
-  echo "For additional aptly options you can set the following environment variables"
-  echo "  MIRROR_CREATE_OPTS: extra options for 'aptly mirror create' (e.g.,-filter=busybox -with-sources)"
-  echo "  PUBLISH_SWITCH_OPTS: extra options for 'aptly publish switch' (e.g.,-skip-contents)"
-  echo "  PUBLISH_SNAPSHOT_OPTS: extra options for 'aptly publish snapshot' (e.g.,-skip-contents)"
+# Функция для чтения значений из YAML-файла
+read_yaml() {
+    yq e "$1" "$YAML_FILE"
 }
 
-while [ "${1}" != "" ]; do
-  case ${1} in
-    -u | --upstream-url )
-      shift
-      UPSTREAM_URL="${1}"
-      ;;
-    -r | --repo )
-      shift
-      REPO="${1}"
-      ;;
-    -d | --dists )
-      shift
-      DISTS=( "${1}" )
-      ;;
-    -c | --components )
-      shift
-      COMPONENTS=( "${1}" )
-      ;;
-    -a | --arch )
-      shift
-      ARCH="${1}"
-      ;;
-    -h | --help )
-      usage
-      exit
-      ;;
-    * )
-      usage
-      exit 1
-  esac
-  shift
-done
-
 # Create the mirror repository, if it doesn't exist
-set +e
-for dist in ${DISTS[@]}; do
-  aptly mirror list -raw | grep "^${REPO}-${dist}$"
-  if [[ $? -ne 0 ]]; then
-    echo "Creating mirror of ${REPO} repository."
-    aptly mirror create \
-      ${MIRROR_CREATE_OPTS} \
-      -architectures=${ARCH} ${REPO}-${dist} ${UPSTREAM_URL} ${dist} ${COMPONENTS[@]}
-  fi
-done
-set -e
+create_mirrors() {
+    set +e
+    for DIST in ${REPO_DISTS[@]}; do
+        aptly mirror list -raw | grep "^${REPO_NAME}-${DIST}$"
+        if [[ $? -ne 0 ]]; then
+            echo "Creating mirror of ${REPO_NAME} repository."
+            aptly mirror create \
+            ${MIRROR_CREATE_OPTS} \
+            -architectures=${REPO_ARCHS} ${REPO_NAME}-${DIST} ${REPO_URL} ${DIST} ${REPO_COMPS}
+        fi
+    done
+    set -e
+}
 
 # Update the all repository mirrors
-for dist in ${DISTS[@]}; do
-  echo "Updating ${REPO}-${dist} repository mirror.."
-  aptly mirror update ${REPO}-${dist}
-done
+update_mirrors() {
+    for DIST in ${REPO_DISTS[@]}; do
+        echo "Updating ${REPO_NAME}-${DIST} repository mirror.."
+        aptly mirror update ${REPO_NAME}-${DIST}
+    done
+}
 
 # Create snapshots of updated repositories
-for dist in ${DISTS[@]}; do
-  echo "Creating snapshot of ${REPO}-${dist} repository mirror.."
-  SNAPSHOT=${REPO}-${dist}-`date +%s%N`
-  SNAPSHOTARRAY+="${SNAPSHOT} "
-  aptly snapshot create ${SNAPSHOT} from mirror ${REPO}-${dist}
-done
+create_snapshots() {
+    SNAP_DATE=$(date +%s%N)
 
-echo "Snapshots results:"
-echo ${SNAPSHOTARRAY[@]}
+    for DIST in ${REPO_DISTS[@]}; do
+        echo "Creating snapshot of ${REPO_NAME}-${DIST} repository mirror.."
+        SNAPSHOT=${REPO_NAME}-${DIST}-$SNAP_DATE
+        SNAPSHOTARRAY+="${SNAPSHOT} "
+        aptly snapshot create ${SNAPSHOT} from mirror ${REPO_NAME}-${DIST}
+    done
 
-# # Merge snapshots into a single snapshot with updates applied
-# REPO_MERGED=${REPO}-merged-`date +%s%N`
-# echo "Merging snapshots into one.."
-# aptly snapshot merge -latest ${REPO_MERGED} ${SNAPSHOTARRAY[@]}
-
-echo -n "Enter GPG passphrase:"
-read -s GPG_PASSPHRASE
-echo
+    echo "Snapshots results:"
+    echo ${SNAPSHOTARRAY[@]}
+}
 
 # Publish the latest snapshots
-set +e
-for snap in ${SNAPSHOTARRAY[@]}; do
-  dist=$(echo ${snap} | sed "s/^${REPO}-\(.*\)-[^-]*\$/\1/")
-  aptly publish list -raw | grep "^${REPO} ${dist}$"
-  if [[ $? -eq 0 ]]; then
-    aptly publish switch \
-      ${PUBLISH_SWITCH_OPTS} \
-      -passphrase="${GPG_PASSPHRASE}" ${dist} ${REPO} ${snap}
-  else
-    # Keys must be before name of a snapshot
-    # -distribution=${REPO_MERGED} - it can be missed
-    aptly publish snapshot \
-      ${PUBLISH_SNAPSHOT_OPTS} \
-      -passphrase="${GPG_PASSPHRASE}" ${snap} ${REPO}
-  fi
+publish_snapshots() {
+    set +e
+    for snap in ${SNAPSHOTARRAY[@]}; do
+        DIST=$(echo ${snap} | sed "s/^${REPO_NAME}-\(.*\)-[^-]*\$/\1/")
+        aptly publish list -raw | grep "^${REPO_NAME} ${DIST}$"
+        if [[ $? -eq 0 ]]; then
+            aptly publish switch \
+            ${PUBLISH_SWITCH_OPTS} -batch=true \
+            -passphrase=${GPG_PASSPHRASE} ${DIST} ${REPO_NAME} ${snap}
+        else
+            aptly publish snapshot \
+            ${PUBLISH_SNAPSHOT_OPTS} -batch=true \
+            -passphrase=${GPG_PASSPHRASE} ${snap} ${REPO_NAME}
+        fi
+    done
+    set -e
+}
+
+# Сount repositories
+REPO_COUNT=$(read_yaml '.repositories | length')
+
+for ((i=0; i<REPO_COUNT; i++)); do
+    REPO_NAME=$(read_yaml ".repositories[$i].name")
+    REPO_URL=$(read_yaml ".repositories[$i].url")
+    REPO_DISTS=$(read_yaml ".repositories[$i].dist | join(\" \")")
+    REPO_COMPS=$(read_yaml ".repositories[$i].components | join(\" \")")
+    REPO_ARCHS=$(read_yaml ".repositories[$i].architectures | join(\",\")")
+    
+    create_mirrors
+    update_mirrors
+    create_snapshots
+    publish_snapshots
 done
-set -e
 
 # Generate Aptly Graph
 aptly graph -output /opt/aptly/public/aptly_graph.png
