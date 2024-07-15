@@ -20,7 +20,6 @@ read_yaml() {
 
 # Create the mirror repository, if it doesn't exist
 create_mirrors() {
-    set +e
     for DIST in ${REPO_DISTS[@]}; do
         aptly mirror list -raw | grep "^${REPO_NAME}-${DIST}$"
         if [[ $? -ne 0 ]]; then
@@ -30,7 +29,6 @@ create_mirrors() {
             -architectures=${REPO_ARCHS} ${REPO_NAME}-${DIST} ${REPO_URL} ${DIST} ${REPO_COMPS}
         fi
     done
-    set -e
 }
 
 # Update the all repository mirrors
@@ -58,7 +56,6 @@ create_snapshots() {
 
 # Publish the latest snapshots
 publish_snapshots() {
-    set +e
     for snap in ${SNAPSHOTARRAY[@]}; do
         DIST=$(echo ${snap} | sed "s/^${REPO_NAME}-\(.*\)-[^-]*\$/\1/")
         aptly publish list -raw | grep "^${REPO_NAME} ${DIST}$"
@@ -72,7 +69,6 @@ publish_snapshots() {
             -passphrase=${GPG_PASSPHRASE} ${snap} ${REPO_NAME}
         fi
     done
-    set -e
 }
 
 # Сount repositories
