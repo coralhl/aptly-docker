@@ -1,5 +1,4 @@
 #! /usr/bin/env bash
-set -e
 
 # Automate the initial creation and update of a mirror in aptly.
 # Uncomment a prepared section or use your own.
