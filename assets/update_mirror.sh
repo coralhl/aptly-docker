@@ -11,13 +11,17 @@ set -e
 
 LOG_FILE="/var/log/aptly/update_mirror.log"
 
-exec > >(tee -i $LOG_FILE)
-exec 2>&1
+exec > >(tee -a $LOG_FILE) 2>&1
 
 # Path to YAML file with repos settings
 YAML_FILE="/opt/aptly/conf/repos.yml"
 
-# Функция для чтения значений из YAML-файла
+# Logger function
+logger() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+# Read settings from YAML file function
 read_yaml() {
     yq e "$1" "$YAML_FILE"
 }
@@ -28,8 +32,8 @@ create_mirrors() {
     for DIST in ${REPO_DISTS[@]}; do
         aptly mirror list -raw | grep "^${REPO_NAME}-${DIST}$"
         if [[ $? -ne 0 ]]; then
-            echo "Creating mirror of ${REPO_NAME} repository."
-            aptly mirror create \
+            logger "Creating mirror of ${REPO_NAME} repository."
+            logger | aptly mirror create \
             ${MIRROR_CREATE_OPTS} \
             -architectures=${REPO_ARCHS} ${REPO_NAME}-${DIST} ${REPO_URL} ${DIST} ${REPO_COMPS}
         fi
@@ -40,8 +44,8 @@ create_mirrors() {
 # Update the all repository mirrors
 update_mirrors() {
     for DIST in ${REPO_DISTS[@]}; do
-        echo "Updating ${REPO_NAME}-${DIST} repository mirror.."
-        aptly mirror update ${REPO_NAME}-${DIST}
+        logger "Updating ${REPO_NAME}-${DIST} repository mirror.."
+        logger | aptly mirror update ${REPO_NAME}-${DIST}
     done
 }
 
@@ -50,14 +54,14 @@ create_snapshots() {
     SNAP_DATE=$(date +%s%N)
 
     for DIST in ${REPO_DISTS[@]}; do
-        echo "Creating snapshot of ${REPO_NAME}-${DIST} repository mirror.."
+        logger "Creating snapshot of ${REPO_NAME}-${DIST} repository mirror.."
         SNAPSHOT=${REPO_NAME}-${DIST}-$SNAP_DATE
         SNAPSHOTARRAY+="${SNAPSHOT} "
-        aptly snapshot create ${SNAPSHOT} from mirror ${REPO_NAME}-${DIST}
+        logger | aptly snapshot create ${SNAPSHOT} from mirror ${REPO_NAME}-${DIST}
     done
 
-    echo "Snapshots results:"
-    echo ${SNAPSHOTARRAY[@]}
+    logger "Snapshots results:"
+    logger ${SNAPSHOTARRAY[@]}
 }
 
 # Publish the latest snapshots
@@ -67,11 +71,11 @@ publish_snapshots() {
         DIST=$(echo ${snap} | sed "s/^${REPO_NAME}-\(.*\)-[^-]*\$/\1/")
         aptly publish list -raw | grep "^${REPO_NAME} ${DIST}$"
         if [[ $? -eq 0 ]]; then
-            aptly publish switch \
+            logger | aptly publish switch \
             ${PUBLISH_SWITCH_OPTS} -batch=true \
             -passphrase=${GPG_PASSPHRASE} ${DIST} ${REPO_NAME} ${snap}
         else
-            aptly publish snapshot \
+            logger | aptly publish snapshot \
             ${PUBLISH_SNAPSHOT_OPTS} -batch=true \
             -passphrase=${GPG_PASSPHRASE} ${snap} ${REPO_NAME}
         fi
