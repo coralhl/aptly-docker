@@ -9,6 +9,11 @@ set -e
 # You can then specify its value in the docker environment variable.
 # GPG_PASSPHRASE="super-secret-passphrase"
 
+LOG_FILE="/var/log/aptly/update_mirror.log"
+
+exec > >(tee -i $LOG_FILE)
+exec 2>&1
+
 # Path to YAML file with repos settings
 YAML_FILE="/opt/aptly/conf/repos.yml"
 
