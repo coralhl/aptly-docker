@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM debian:bookworm-20240701-slim
+FROM debian:bookworm-20240722-slim
 
 LABEL maintainer="coralhl@gmail.com"
 
@@ -56,6 +56,7 @@ ENV GNUPGHOME="/opt/aptly/gpg"
 
 # Install configurations
 COPY assets/aptly.conf /etc/aptly.conf
+COPY assets/mirrors.yml /opt/mirrors.yml
 COPY assets/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY assets/supervisord.web.conf /etc/supervisor/conf.d/web.conf
 

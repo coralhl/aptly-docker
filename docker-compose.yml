@@ -7,9 +7,10 @@ services:
     restart: always
     # environment:
     #   - GPG_PASSPHRASE=super-secret-passphrase
-    networks:
-      - proxy_default
+    #   - MIRR_FILE=/opt/aptly/mirrors.yml
+    #   - LOG_FILE=/var/log/aptly/aptly.log
     ports:
       - 80:80
     volumes:
-      - /opt/docker/aptly:/opt/aptly
+      - /opt/docker/aptly/data:/opt/aptly
+      - /opt/docker/aptly/log:/var/log/aptly

@@ -9,12 +9,12 @@ set -e
 # You can then specify its value in the docker environment variable.
 # GPG_PASSPHRASE="super-secret-passphrase"
 
-LOG_FILE="/var/log/aptly/update_mirror.log"
+LOG_FILE="/var/log/aptly/aptly.log"
 
 exec > >(tee -a $LOG_FILE) 2>&1
 
-# Path to YAML file with repos settings
-YAML_FILE="/opt/aptly/conf/repos.yml"
+# Path to YAML file with mirrors settings
+YAML_FILE="/opt/aptly/mirrors.yml"
 
 # Logger function
 logger() {

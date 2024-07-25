@@ -18,11 +18,11 @@
 
     All of aptly's data (including GPG keyrings) is bind mounted outside of the container to preserve it if the container is removed or rebuilt.
 
-2. If you want to customize image or build the container locally, **check out this repository and build, otherwise skip this step** and use prepared image from [`DockerHub`](https://hub.docker.com/r/urpylka/aptly):
+2. If you want to customize image or build the container locally, **check out this repository and build, otherwise skip this step** and use prepared image from [`DockerHub`](https://hub.docker.com/r/coralhl/aptly):
 
     ```bash
-    git clone https://github.com/urpylka/docker-aptly.git
-    docker build docker-aptly --tag urpylka/aptly:latest
+    git clone https://github.com/coralhl/aptly-docker.git
+    docker build docker-aptly --tag coralhl/aptly:latest
     ```
 
     If you decide build own I suggest you use [`docker-compose`](#manage-locally) commands. It will build own image before use.
@@ -32,7 +32,7 @@
     ```bash
     docker run --rm --log-driver=none \
       --volume aptly-data:/opt/aptly \
-      urpylka/aptly:latest \
+      coralhl/aptly:latest \
       /opt/keys_gen.sh "First Last" "your@email.com" "Password"
     ```
 
@@ -57,7 +57,7 @@
       --name="aptly" \
       --publish 80:80 \
       --volume aptly-data:/opt/aptly \
-      urpylka/aptly:latest
+      coralhl/aptly:latest
     ```
 
     If it returned (usualy on macOS):
@@ -99,7 +99,7 @@
         ```bash
         docker run --rm --log-driver=none \
           --volume aptly-data:/opt/aptly \
-          urpylka/aptly:latest \
+          coralhl/aptly:latest \
           /opt/gen_htpasswd.sh "admin" "passwd"
         ```
 
@@ -122,7 +122,7 @@ If you want to build and run locally I suggest use `docker-compose`. But before 
 By default, Docker will map port 80 on the Docker host to port 80 within the container where nginx is configured to listen. You can change the external listening port to map to any port you like. Change the docker-compose file if you use him.
 
 ```bash
-git clone https://github.com/urpylka/docker-aptly
+git clone https://github.com/coralhl/aptly-docker
 cd docker-aptly/
 
 # Build and run
@@ -216,22 +216,34 @@ docker rm 85de5904f6fc73c04f4f8e7d08a09a1a63c2ba28afb5ce45aa9578ebdefeadc7
 
 ## Configure the mirror
 
-1. Enter to the container. How to attach? See [here](#configure-the-repository).
-2. Run `/opt/update_mirror.sh`. This script consists 3 preconfigured configuration which you can use or use your own. For use uncomment one (by default for the Raspbian mirror):
+1. Edit the `mirrors.yml` file and configure the repositories you want to mirror. For example, it has a mirror configured for https://packages.sury.org/php/:
 
-    ```bash
-    UPSTREAM_URL="http://raspbian.raspberrypi.org/raspbian/"
-    REPO=raspbian
-    DISTS=( buster )
-    COMPONENTS=( main contrib non-free rpi )
-    ARCH=armhf
+    ```yaml
+    repositories:
+    - name: php
+        url: https://packages.sury.org/php/
+        dist:
+        - bookworm
+        - bullseye
+        components:
+        - main
+        architectures:
+        - amd64
+        - arm64
     ```
+
+2. Enter to the container. How to attach? See [here](#configure-the-repository).
 
 3. After that you need to setup the public key is associated with this repo to `/opt/aptly/gpg/trustedkeys.gpg`, for this use `/opt/keys_imp.sh`, otherwise you will catch the error:
 
     ```log
     ERROR: unable to fetch mirror: verification of detached signature failed: exit status 2
     ```
+
+In the process, you will be asked for a passphrase. See [p.3](#Quickstart). Then you will have to specify it in the docker environment variable `GPG_PASSPHRASE`.
+
+4. Run `/opt/update_mirror.sh`. This script takes mirror settings from the `mirrors.yml` file. It will create a mirror of the repository or update it, take a snapshot and publish it.
+
 
 > If the script fails due to network disconnects etc, just re-run it.
 
@@ -245,8 +257,27 @@ As example:
 
 ![image](/docs/aptly_graph.png)
 
+5. Run `/opt/db_cleanup.sh`, if you need to save free space and delete all unpublished snapshots.
+
+6. In order to automate the process of updating mirrors and cleaning the aptly database you can use the [ofelia container](https://github.com/mcuadros/ofelia/).
+
+    ```ini
+    [job-exec "aptly sync"]
+    schedule = 0 0 0,12 * * *
+    container = aptly-mirror
+    command = /opt/update_mirror.sh
+    no-overlap = true
+
+    [job-exec "aptly db cleanup"]
+    schedule = 0 0 1,13 * * *
+    container = aptly-mirror
+    command = /opt/db_cleanup.sh
+    no-overlap = true
+    ```
+
 ___
 
+© 2024 coral xciii.ru \
 © 2018-2020 Artem Smirnov \
 © 2016 Bryan J. Hong \
 Licensed under the Apache License, Version 2.0
