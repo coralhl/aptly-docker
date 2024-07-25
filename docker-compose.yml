@@ -12,5 +12,7 @@ services:
     ports:
       - 80:80
     volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
       - /opt/docker/aptly/data:/opt/aptly
       - /opt/docker/aptly/log:/var/log/aptly
