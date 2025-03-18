@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM debian:bookworm-20240722-slim
+FROM debian:bookworm-20250317-slim
 
 LABEL maintainer="coralhl@gmail.com"
 
@@ -22,28 +22,27 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Update APT repository & install packages (except aptly)
 RUN apt-get -q update \
-  && apt-get -y install \
+  && apt-get -y --no-install-recommends install \
     apt-utils \
     bash-completion \
-    bzip2 \
+    ca-certificates \
     curl \
     gettext-base \
-    gnupg2 \
-    gpgv \
+    gpg-agent \
     graphviz \
     nginx \
-    supervisor \
-    xz-utils
+    rng-tools \
+    supervisor
 
-RUN curl -L -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64 \
+RUN curl -L -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64 \
   && chmod +x /usr/local/bin/yq
 
-RUN curl -sL https://www.aptly.info/pubkey.txt | gpg --dearmor | tee /etc/apt/trusted.gpg.d/aptly.gpg >/dev/null \
-  && echo "deb http://repo.aptly.info/ squeeze main" >> /etc/apt/sources.list
+RUN curl -sL -o /etc/apt/keyrings/aptly.asc http://www.aptly.info/pubkey.txt
+RUN echo "deb [signed-by=/etc/apt/keyrings/aptly.asc] http://repo.aptly.info/release bookworm main" > /etc/apt/sources.list.d/aptly.list
 
 # Install aptly package
 RUN apt-get -q update \
-  && apt-get -y install aptly=1.5.0 \
+  && apt-get -y --no-install-recommends install aptly=1.6.1 \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
@@ -63,7 +62,7 @@ COPY assets/supervisord.web.conf /etc/supervisor/conf.d/web.conf
 # Install scripts
 COPY assets/*.sh /opt/
 
-ADD https://raw.githubusercontent.com/aptly-dev/aptly/v1.5.0/completion.d/aptly /usr/share/bash-completion/completions/aptly
+ADD https://raw.githubusercontent.com/aptly-dev/aptly/v1.6.1/completion.d/aptly /usr/share/bash-completion/completions/aptly
 
 RUN echo "if ! shopt -oq posix; then\n\
   if [ -f /usr/share/bash-completion/bash_completion ]; then\n\
@@ -76,7 +75,7 @@ fi" >> /etc/bash.bashrc
 # Declare ports in use
 EXPOSE 80 8080
 
-ENV NGINX_CLIENT_MAX_BODY_SIZE=100M
+ENV NGINX_CLIENT_MAX_BODY_SIZE=200M
 
 ENTRYPOINT [ "/opt/entrypoint.sh" ]
 
